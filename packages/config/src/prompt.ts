@@ -90,13 +90,13 @@ function sectionIdentity(config: ClientConfig): string {
       : '',
     '',
     disc?.inbound_disclosure_required
-      ? `Inbound disclosure (first line): ${str(disc.inbound_disclosure_script)}`
+      ? `Inbound disclosure (first line): ${str(disc?.inbound_disclosure_script)}`
       : '',
     disc?.inbound_disclosure_timing
-      ? `Disclosure timing: ${str(disc.inbound_disclosure_timing)}`
+      ? `Disclosure timing: ${str(disc?.inbound_disclosure_timing)}`
       : '',
     str(disc?.if_caller_asks_if_ai)
-      ? `If asked if you are AI: ${str(disc.if_caller_asks_if_ai)}`
+      ? `If asked if you are AI: ${str(disc?.if_caller_asks_if_ai)}`
       : '',
   ]
     .filter(Boolean)
@@ -120,10 +120,10 @@ function sectionServices(config: ClientConfig): string {
     formatServicesList(config),
     '',
     pricing?.quote_over_phone
-      ? `Pricing policy: quote_over_phone = ${str(pricing.quote_over_phone)}`
+      ? `Pricing policy: quote_over_phone = ${str(pricing?.quote_over_phone)}`
       : '',
     str(pricing?.no_quote_response)
-      ? `When asked about price: ${str(pricing.no_quote_response)}`
+      ? `When asked about price: ${str(pricing?.no_quote_response)}`
       : '',
     '',
     'FAQ (preferred wording for awkward questions):',
@@ -176,25 +176,25 @@ function sectionEscalation(config: ClientConfig): string {
       ? `When you do not know: ${str(esc?.when_it_does_not_know)}`
       : '',
     str(esc?.soft_cap_minutes)
-      ? `Soft cap: ${str(esc.soft_cap_minutes)} minutes — ${str(esc.at_soft_cap_behavior)}`
+      ? `Soft cap: ${str(esc?.soft_cap_minutes)} minutes — ${str(esc?.at_soft_cap_behavior)}`
       : '',
     str(esc?.hard_cap_minutes)
-      ? `Hard cap: ${str(esc.hard_cap_minutes)} minutes — ${str(esc.at_hard_cap_script)}`
+      ? `Hard cap: ${str(esc?.hard_cap_minutes)} minutes — ${str(esc?.at_hard_cap_script)}`
       : '',
     '',
     em?.transfer_immediately
-      ? `Emergency (transfer immediately): ${str(em.transfer_immediately)}`
+      ? `Emergency (transfer immediately): ${str(em?.transfer_immediately)}`
       : '',
-    str(em?.emergency_script) ? `Emergency script: ${str(em.emergency_script)}` : '',
+    str(em?.emergency_script) ? `Emergency script: ${str(em?.emergency_script)}` : '',
     str(em?.if_no_one_answers)
-      ? `If transfer fails: ${str(em.if_no_one_answers)}`
+      ? `If transfer fails: ${str(em?.if_no_one_answers)}`
       : '',
     '',
     rec?.calls_are_recorded
-      ? `Recording notice: ${str(rec.notification_script)} (${str(rec.notification_timing)})`
+      ? `Recording notice: ${str(rec?.notification_script)} (${str(rec?.notification_timing)})`
       : '',
     str(rec?.if_caller_declines_recording)
-      ? `If caller declines recording: ${str(rec.if_caller_declines_recording)}`
+      ? `If caller declines recording: ${str(rec?.if_caller_declines_recording)}`
       : '',
     config.vipList ? `\nCall screening / classifier:\n${formatVipList(config)}` : '',
   ]

@@ -91,6 +91,20 @@ npm run acceptance        # full gate: validate.py + all tests + scenarios
 
 Manual go-live checklist: `scripts/test-scenarios/README.md`
 
+## Google Calendar OAuth (one-time)
+
+After creating a **Desktop app** OAuth client in Google Cloud Console:
+
+```bash
+# 1. Put GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET in .env
+# 2. Consent once — writes GOOGLE_CALENDAR_REFRESH_TOKEN to .env
+npm run calendar:oauth
+```
+
+Scope: `https://www.googleapis.com/auth/calendar`. Target calendar ID lives in Deployment Kit `integrations.yaml` (`calendar_id`), not in `.env`.
+
+When `GOOGLE_CALENDAR_*` credentials are set, `check_availability` and `book_appointment` call Google Calendar directly (20-minute consult + 40-minute private buffer). Without credentials, bookings queue to the daily briefing as before.
+
 ## Build and test
 
 ```bash

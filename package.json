@@ -23,6 +23,7 @@
     "async:start": "npm run start -w @receptionist/async",
     "briefing:run": "npm run briefing -w @receptionist/async",
     "leads:notify": "npm run leads -w @receptionist/async",
+    "calendar:oauth": "node scripts/google-calendar-oauth.mjs",
     "test:acceptance": "vitest run --config scripts/test-scenarios/vitest.config.ts",
     "acceptance": "node scripts/run-acceptance.mjs"
   },

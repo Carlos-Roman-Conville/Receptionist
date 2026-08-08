@@ -35,6 +35,9 @@ describe('P-scenarios — phone acceptance', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.EMERGENCY_TRANSFER_NUMBER = '+18563979706';
+    process.env.GOOGLE_CALENDAR_CLIENT_ID = '';
+    process.env.GOOGLE_CALENDAR_CLIENT_SECRET = '';
+    process.env.GOOGLE_CALENDAR_REFRESH_TOKEN = '';
   });
 
   it('P1 — booking queues calendar write with appointment details', async () => {

@@ -9,25 +9,16 @@ import { sendEmergencyPushover } from '@receptionist/async';
 import {
   classifyFromToolInput,
   parseClassifierConfig,
-  type ClassifierOutput,
 } from '../classifier.js';
+import {
+  bookAppointment,
+  cancelAppointment,
+  checkAvailability,
+  rescheduleAppointment,
+} from '../calendar/booking.js';
+import type { ToolExecutionContext, ToolExecutionResult } from './types.js';
 
-export interface ToolExecutionContext {
-  pool: Pool;
-  config: ClientConfig;
-  clientSlug: string;
-  sessionId?: string | null;
-  callId?: string | null;
-  channel: 'phone' | 'web_chat';
-  lastUserMessage?: string;
-}
-
-export interface ToolExecutionResult {
-  ok: boolean;
-  message: string;
-  classifier?: ClassifierOutput;
-  data?: Record<string, unknown>;
-}
+export type { ToolExecutionContext, ToolExecutionResult } from './types.js';
 
 export async function executeTool(
   toolName: string,
@@ -60,33 +51,16 @@ export async function executeTool(
       };
 
     case 'check_availability':
-      return {
-        ok: true,
-        message:
-          'Availability check queued. Calendar integration executes in Phase 2.',
-        data: input,
-      };
+      return checkAvailability(ctx, input);
 
     case 'book_appointment':
-      await addBriefingItem(ctx.pool, {
-        clientSlug: ctx.clientSlug,
-        itemType: 'booking',
-        summary: `Booking requested for ${String(input.start_time ?? 'TBD')}`,
-        metadata: input,
-      });
-      return {
-        ok: true,
-        message: 'Appointment booking queued for calendar write.',
-        data: input,
-      };
+      return bookAppointment(ctx, input);
 
     case 'reschedule_appointment':
+      return rescheduleAppointment(ctx, input);
+
     case 'cancel_appointment':
-      return {
-        ok: true,
-        message: `${toolName} queued for calendar integration.`,
-        data: input,
-      };
+      return cancelAppointment(ctx, input);
 
     case 'classify_caller': {
       const classifierConfig = parseClassifierConfig(ctx.config.vipList);

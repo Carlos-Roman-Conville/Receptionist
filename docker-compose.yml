@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: receptionist-postgres
+    environment:
+      POSTGRES_USER: receptionist
+      POSTGRES_PASSWORD: receptionist
+      POSTGRES_DB: receptionist
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U receptionist -d receptionist"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: receptionist-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      GENERIC_TIMEZONE: America/New_York
+      RECEPTIONIST_ASYNC_URL: http://host.docker.internal:3002
+      RECEPTIONIST_ASYNC_SECRET: ${ASYNC_WEBHOOK_SECRET:-}
+    volumes:
+      - n8n-data:/home/node/.n8n
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  postgres-data:
+  n8n-data:

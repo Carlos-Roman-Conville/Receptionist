@@ -1,0 +1,9 @@
+chat.crc-solutions.org {
+	encode gzip
+	reverse_proxy chat:3000
+}
+
+voice.crc-solutions.org {
+	encode gzip
+	reverse_proxy voice:3001
+}

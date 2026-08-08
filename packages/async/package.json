@@ -1,0 +1,36 @@
+{
+  "name": "@receptionist/async",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "briefing": "tsx src/cli-briefing.ts",
+    "leads": "tsx src/cli-leads.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@receptionist/config": "*",
+    "@receptionist/db": "*",
+    "dotenv": "^16.4.7",
+    "fastify": "^5.2.1",
+    "nodemailer": "^6.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "@types/nodemailer": "^6.4.17",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

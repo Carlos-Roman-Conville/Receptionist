@@ -24,6 +24,80 @@ python "E:\shared programs\Business Model\Deployment Kit\validate.py" "E:\shared
 npm run prompt:dump
 ```
 
+## Database (Phase 1)
+
+```bash
+npm run db:up
+npm run db:migrate
+```
+
+## Brain CLI (Phase 1 — requires Postgres + ANTHROPIC_API_KEY)
+
+```bash
+npm run brain:cli -- "What services do you offer?"
+```
+
+## Chat service (Phase 2)
+
+```bash
+npm run db:up
+npm run db:migrate
+npm run chat:dev
+# POST http://localhost:3000/chat
+```
+
+Widget backend URL: `POST /chat` (legacy `/webhook/chat` alias still supported).
+
+## Voice service (Phase 3)
+
+```bash
+npm run db:up
+npm run db:migrate
+npm run voice:dev
+# Telnyx webhooks -> POST /webhooks/telnyx
+# Media stream -> WS /media?call_control_id=...
+```
+
+Requires `TELNYX_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, and `EMERGENCY_TRANSFER_NUMBER` in `.env`. Set `VOICE_PUBLIC_WS_URL` to your public WSS URL for Telnyx streaming.
+
+## Async service + n8n (Phase 4)
+
+```bash
+npm run async:dev
+npm run briefing:run      # manual daily briefing
+npm run leads:notify      # manual hot/warm lead emails
+```
+
+Import workflows from `n8n/workflows/` (see `n8n/README.md`). Schedule: **6:30 AM** daily briefing, 5-minute lead poll.
+
+Pushover fires immediately on emergency (`send_emergency_alert` tool). SMTP required for briefing and lead emails.
+
+## Website wiring (Phase 5)
+
+Static site: `E:\shared programs\Website\website\site-config.js` → `https://chat.crc-solutions.org`
+
+```bash
+npm run validate:wiring
+```
+
+Production deploy: see `deploy/README.md` (Caddy, Docker, DNS for `chat.` and `voice.` subdomains).
+
+## Acceptance tests (Phase 6)
+
+```bash
+npm run test:acceptance   # C + P scenarios
+npm run acceptance        # full gate: validate.py + all tests + scenarios
+```
+
+Manual go-live checklist: `scripts/test-scenarios/README.md`
+
+## Build and test
+
+```bash
+npm run build
+npm test
+```
+
 ## Related paths
 
 | Path | Purpose |
@@ -36,4 +110,4 @@ npm run prompt:dump
 
 ## Status
 
-Phase 0 in progress: config loader + prompt assembler.
+Phase 6 complete: automated C1–C8 and P1–P7 acceptance scenarios, `npm run acceptance` gate (validate.py + unit tests + scenarios). Manual production sign-off checklist in `scripts/test-scenarios/README.md`.

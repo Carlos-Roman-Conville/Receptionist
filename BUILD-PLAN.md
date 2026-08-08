@@ -1,7 +1,7 @@
 # CRC AI Receptionist — Build Plan
 
 **Client:** crc-solutions  
-**Status:** Phase 0 — config loader + prompt assembler  
+**Status:** Phase 6 — Acceptance tests  
 **Architecture guide:** `E:\shared programs\Business Model\CRC-Technical-Guide-Receptionist.md`  
 **Precedence:** `docs/guide-vs-kit-precedence.md`
 **Config:** `E:\shared programs\Business Model\Deployment Kit\clients\crc-solutions\`  

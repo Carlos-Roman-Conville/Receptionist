@@ -1,0 +1,59 @@
+{
+  "name": "Receptionist — Daily Briefing 6:30",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-0630",
+      "name": "Every day 6:30 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [280, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.RECEPTIONIST_ASYNC_URL}}/run/briefing",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Async-Secret",
+              "value": "={{$env.RECEPTIONIST_ASYNC_SECRET}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-briefing",
+      "name": "Run daily briefing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Every day 6:30 AM": {
+      "main": [
+        [
+          {
+            "node": "Run daily briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/New_York"
+  }
+}

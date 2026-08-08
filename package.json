@@ -6,9 +6,29 @@
   ],
   "scripts": {
     "validate:client": "node scripts/validate-client.mjs",
+    "validate:wiring": "node scripts/validate-wiring.mjs",
     "prompt:dump": "npm run prompt:dump -w @receptionist/config",
-    "test": "npm run test -w @receptionist/config",
-    "build": "npm run build -w @receptionist/config"
+    "build": "npm run build -w @receptionist/config && npm run build -w @receptionist/db && npm run build -w @receptionist/async && npm run build -w @receptionist/brain && npm run build -w @receptionist/chat && npm run build -w @receptionist/voice",
+    "test": "npm run test --workspaces --if-present",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run migrate -w @receptionist/db",
+    "db:retention": "npm run retention -w @receptionist/db",
+    "brain:cli": "npm run cli -w @receptionist/brain",
+    "chat:dev": "npm run dev -w @receptionist/chat",
+    "chat:start": "npm run start -w @receptionist/chat",
+    "voice:dev": "npm run dev -w @receptionist/voice",
+    "voice:start": "npm run start -w @receptionist/voice",
+    "async:dev": "npm run dev -w @receptionist/async",
+    "async:start": "npm run start -w @receptionist/async",
+    "briefing:run": "npm run briefing -w @receptionist/async",
+    "leads:notify": "npm run leads -w @receptionist/async",
+    "test:acceptance": "vitest run --config scripts/test-scenarios/vitest.config.ts",
+    "acceptance": "node scripts/run-acceptance.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
   },
   "engines": {
     "node": ">=20"

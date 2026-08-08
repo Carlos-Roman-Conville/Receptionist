@@ -1,0 +1,16 @@
+{
+  "name": "receptionist",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "validate:client": "node scripts/validate-client.mjs",
+    "prompt:dump": "npm run prompt:dump -w @receptionist/config",
+    "test": "npm run test -w @receptionist/config",
+    "build": "npm run build -w @receptionist/config"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

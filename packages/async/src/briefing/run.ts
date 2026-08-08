@@ -58,6 +58,16 @@ export async function runDailyBriefing(
     from: defaultEmailFrom(config),
   });
 
+  if (!emailResult.sent) {
+    return {
+      ok: false,
+      skippedReason: 'email_send_failed',
+      recipient,
+      itemCount: compiled.itemCount,
+      emailSent: false,
+    };
+  }
+
   const briefingId = await createDailyBriefingRecord(pool, {
     clientSlug,
     recipient,
@@ -77,6 +87,6 @@ export async function runDailyBriefing(
     briefingId,
     recipient,
     itemCount: compiled.itemCount,
-    emailSent: emailResult.sent,
+    emailSent: true,
   };
 }

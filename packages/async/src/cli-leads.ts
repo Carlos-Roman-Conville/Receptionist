@@ -15,4 +15,4 @@ const result = await notifyPendingLeads(getPool(), config);
 
 console.log(JSON.stringify(result, null, 2));
 await closePool();
-process.exit(0);
+process.exit(result.ok ? 0 : 1);

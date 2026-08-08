@@ -11,9 +11,11 @@ import { loadAsyncEnv } from '../env.js';
 import { defaultEmailFrom, sendEmail } from '../smtp.js';
 
 export interface NotifyLeadsResult {
+  ok: boolean;
   processed: number;
   sent: number;
   skipped: number;
+  skippedReason?: string;
 }
 
 export async function notifyPendingLeads(
@@ -27,7 +29,13 @@ export async function notifyPendingLeads(
     : [env.defaultNotifyEmail].filter(Boolean);
 
   if (recipients.length === 0) {
-    return { processed: 0, sent: 0, skipped: 0 };
+    return {
+      ok: false,
+      processed: 0,
+      sent: 0,
+      skipped: 0,
+      skippedReason: 'no_recipients',
+    };
   }
 
   const leads = await listUnnotifiedLeads(pool, config.paths.clientSlug);
@@ -64,5 +72,10 @@ export async function notifyPendingLeads(
     }
   }
 
-  return { processed: leads.length, sent, skipped };
+  return {
+    ok: leads.length === 0 || sent === leads.length,
+    processed: leads.length,
+    sent,
+    skipped,
+  };
 }

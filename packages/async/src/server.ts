@@ -46,7 +46,7 @@ export function createAsyncServer(options: CreateAsyncServerOptions) {
     }
 
     const result = await notifyPendingLeads(options.pool, options.config);
-    return reply.status(200).send(result);
+    return reply.status(result.ok ? 200 : 400).send(result);
   });
 
   return app;

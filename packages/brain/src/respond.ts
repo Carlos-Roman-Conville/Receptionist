@@ -137,33 +137,38 @@ export class Brain {
     let chat: ParsedChatResponse | undefined;
 
     if (request.channel === 'web_chat') {
+      let parsedChat = false;
       try {
         chat = parseChatJson(reply);
         reply = chat.reply;
-        if (
-          chat.leadScore === 'hot' ||
-          chat.leadScore === 'warm' ||
-          chat.action === 'booked'
-        ) {
-          await recordLeadFromChat(
-            {
-              pool: this.pool,
-              config: this.config,
-              clientSlug: this.config.paths.clientSlug,
-              sessionId: session.id,
-              channel: request.channel,
-            },
-            {
-              email: request.visitorEmail,
-              leadScore: chat.leadScore ?? null,
-              intent: chat.intent ?? null,
-              notes: chat.leadData?.notes ? String(chat.leadData.notes) : null,
-            },
-          );
-        }
+        parsedChat = true;
       } catch {
         chat = chatJsonFallback();
         reply = chat.reply;
+      }
+
+      if (
+        parsedChat &&
+        chat &&
+        (chat.leadScore === 'hot' ||
+          chat.leadScore === 'warm' ||
+          chat.action === 'booked')
+      ) {
+        await recordLeadFromChat(
+          {
+            pool: this.pool,
+            config: this.config,
+            clientSlug: this.config.paths.clientSlug,
+            sessionId: session.id,
+            channel: request.channel,
+          },
+          {
+            email: request.visitorEmail,
+            leadScore: chat.leadScore ?? null,
+            intent: chat.intent ?? null,
+            notes: chat.leadData?.notes ? String(chat.leadData.notes) : null,
+          },
+        );
       }
     }
 

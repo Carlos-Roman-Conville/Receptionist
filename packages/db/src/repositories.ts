@@ -1,5 +1,13 @@
 import type { Pool } from 'pg';
 
+function requireReturningRow<T>(rows: T[], operation: string): T {
+  const row = rows[0];
+  if (row === undefined) {
+    throw new Error(`${operation}: INSERT RETURNING produced no row`);
+  }
+  return row;
+}
+
 export type SessionChannel = 'phone' | 'web_chat';
 
 export interface SessionRow {
@@ -37,7 +45,7 @@ export async function upsertSession(
       input.callerPhone ?? null,
     ],
   );
-  return result.rows[0];
+  return requireReturningRow(result.rows, 'upsertSession');
 }
 
 export async function getSessionByExternalId(
@@ -105,7 +113,7 @@ export async function createCall(
       JSON.stringify(input.metadata ?? {}),
     ],
   );
-  return result.rows[0];
+  return requireReturningRow(result.rows, 'createCall');
 }
 
 export async function getCallByTelnyxControlId(
@@ -258,7 +266,7 @@ export async function createLead(
       JSON.stringify(input.metadata ?? {}),
     ],
   );
-  return result.rows[0].id;
+  return requireReturningRow(result.rows, 'createLead').id;
 }
 
 export async function addBriefingItem(
@@ -504,7 +512,7 @@ export async function createDailyBriefingRecord(
       input.itemCount,
     ],
   );
-  return result.rows[0].id;
+  return requireReturningRow(result.rows, 'createDailyBriefingRecord').id;
 }
 
 export async function markBriefingItemsIncluded(

@@ -1,10 +1,5 @@
 import type { AnthropicTool } from './tools/registry.js';
 
-export interface ClaudeMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 export interface ClaudeToolUseBlock {
   type: 'tool_use';
   id: string;
@@ -17,7 +12,23 @@ export interface ClaudeTextBlock {
   text: string;
 }
 
-export type ClaudeContentBlock = ClaudeTextBlock | ClaudeToolUseBlock;
+export interface ClaudeToolResultBlock {
+  type: 'tool_result';
+  tool_use_id: string;
+  content: string;
+}
+
+export type ClaudeContentBlock =
+  | ClaudeTextBlock
+  | ClaudeToolUseBlock
+  | ClaudeToolResultBlock;
+
+export type ClaudeMessageContent = string | ClaudeContentBlock[];
+
+export interface ClaudeMessage {
+  role: 'user' | 'assistant';
+  content: ClaudeMessageContent;
+}
 
 export interface ClaudeResponse {
   id: string;

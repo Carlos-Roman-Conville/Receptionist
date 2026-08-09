@@ -20,3 +20,9 @@ export {
   chatJsonFallback,
 } from './channel-overlay.js';
 export type { BrainChannel, ParsedChatResponse } from './channel-overlay.js';
+export {
+  buildTimeContext,
+  timezoneFromPhone,
+  areaCodeFromPhone,
+  formatSlotLabel,
+} from './time-context.js';

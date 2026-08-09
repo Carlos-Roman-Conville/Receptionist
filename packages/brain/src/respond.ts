@@ -25,9 +25,14 @@ import {
   extractText,
   extractToolUses,
   type ClaudeMessage,
+  type ClaudeResponse,
 } from './claude.js';
+import { buildTimeContext } from './time-context.js';
 import { buildAnthropicTools } from './tools/registry.js';
 import { executeTool, recordLeadFromChat } from './tools/executor.js';
+import type { ToolExecutionContext } from './tools/types.js';
+
+const MAX_TOOL_ROUNDS = 5;
 
 export interface BrainRequest {
   channel: SessionChannel;
@@ -88,6 +93,13 @@ export class Brain {
     const system = [
       systemPrompt,
       '',
+      buildTimeContext({
+        businessTimezone: String(
+          this.config.businessDetails.hours?.timezone ?? '',
+        ),
+        callerPhone: request.callerPhone,
+      }),
+      '',
       buildChannelOverlay(request.channel, this.config),
     ].join('\n');
 
@@ -99,39 +111,28 @@ export class Brain {
       { role: 'user', content: request.userMessage },
     ];
 
-    const response = await this.claude.createMessage({
-      model: this.model,
-      max_tokens: 1024,
-      system,
-      messages,
-      tools: tools.length > 0 ? tools : undefined,
-    });
-
     let classifier: ClassifierOutput | null = tripwire;
     const toolResults: BrainResponse['toolResults'] = [];
 
-    for (const toolUse of extractToolUses(response)) {
-      const result = await executeTool(
-        toolUse.name,
-        toolUse.input,
-        {
-          pool: this.pool,
-          config: this.config,
-          clientSlug: this.config.paths.clientSlug,
-          sessionId: session.id,
-          channel: request.channel,
-          lastUserMessage: request.userMessage,
-        },
-      );
-      toolResults.push({
-        name: toolUse.name,
-        ok: result.ok,
-        message: result.message,
-      });
-      if (result.classifier) {
-        classifier = result.classifier;
-      }
-    }
+    const response = await this.runWithTools({
+      system,
+      messages,
+      tools,
+      toolCtx: {
+        pool: this.pool,
+        config: this.config,
+        clientSlug: this.config.paths.clientSlug,
+        sessionId: session.id,
+        channel: request.channel,
+        lastUserMessage: request.userMessage,
+      },
+      onToolExecuted: (entry) => {
+        toolResults.push(entry);
+        if (entry.classifier) {
+          classifier = entry.classifier;
+        }
+      },
+    });
 
     let reply = extractText(response);
     let chat: ParsedChatResponse | undefined;
@@ -189,5 +190,75 @@ export class Brain {
       toolResults,
       chat,
     };
+  }
+
+  private async runWithTools(options: {
+    system: string;
+    messages: ClaudeMessage[];
+    tools: ReturnType<typeof buildAnthropicTools>;
+    toolCtx: ToolExecutionContext;
+    onToolExecuted: (entry: {
+      name: string;
+      ok: boolean;
+      message: string;
+      classifier?: ClassifierOutput;
+    }) => void;
+  }): Promise<ClaudeResponse> {
+    const conversation = [...options.messages];
+    let response = await this.claude.createMessage({
+      model: this.model,
+      max_tokens: 1024,
+      system: options.system,
+      messages: conversation,
+      tools: options.tools.length > 0 ? options.tools : undefined,
+    });
+
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      const toolUses = extractToolUses(response);
+      if (toolUses.length === 0 || response.stop_reason !== 'tool_use') {
+        break;
+      }
+
+      const toolResults = [];
+      for (const toolUse of toolUses) {
+        const started = Date.now();
+        const result = await executeTool(
+          toolUse.name,
+          toolUse.input,
+          options.toolCtx,
+        );
+        console.info(
+          `[brain] tool ${toolUse.name} ok=${result.ok} ms=${Date.now() - started}`,
+        );
+        options.onToolExecuted({
+          name: toolUse.name,
+          ok: result.ok,
+          message: result.message,
+          classifier: result.classifier,
+        });
+        toolResults.push({
+          type: 'tool_result' as const,
+          tool_use_id: toolUse.id,
+          content: JSON.stringify({
+            ok: result.ok,
+            message: result.message,
+            data: result.data ?? null,
+          }),
+        });
+      }
+
+      conversation.push({ role: 'assistant', content: response.content });
+      conversation.push({ role: 'user', content: toolResults });
+
+      response = await this.claude.createMessage({
+        model: this.model,
+        max_tokens: 1024,
+        system: options.system,
+        messages: conversation,
+        tools: options.tools.length > 0 ? options.tools : undefined,
+      });
+    }
+
+    return response;
   }
 }

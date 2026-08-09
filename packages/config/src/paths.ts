@@ -49,9 +49,10 @@ export function resolveClientPaths(
 }
 
 export function getEnvPaths(): ClientPaths {
-  const kitRoot =
-    process.env.DEPLOYMENT_KIT_PATH ||
-    'E:/shared programs/Business Model/Deployment Kit';
+  const kitRoot = process.env.DEPLOYMENT_KIT_PATH;
+  if (!kitRoot) {
+    throw new Error('DEPLOYMENT_KIT_PATH environment variable is required');
+  }
   const clientSlug = process.env.CLIENT_SLUG;
   if (!clientSlug) {
     throw new Error('CLIENT_SLUG environment variable is required');

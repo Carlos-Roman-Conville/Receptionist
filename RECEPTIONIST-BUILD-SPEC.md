@@ -4,7 +4,7 @@ Internal implementation reference derived from [CRC-Technical-Guide-Receptionist
 
 When the Guide and Deployment Kit conflict, **the Kit wins**. See [docs/guide-vs-kit-precedence.md](docs/guide-vs-kit-precedence.md).
 
-Source of truth for *what* to build with: `E:\shared programs\Business Model\Deployment Kit\clients\<slug>\`
+Source of truth for *what* to build with: `E:\shared programs\CRC Solutions\Deployment Kit\clients\<slug>\`
 
 ---
 
@@ -107,8 +107,8 @@ Identity, Personality, Services, Rules, Tools, Escalation, Boundaries — assemb
 
 ## References
 
-- **Technical Guide (architecture):** `E:\shared programs\Business Model\CRC-Technical-Guide-Receptionist.md`
-- **Deployment Kit (client config):** `E:\shared programs\Business Model\Deployment Kit\`
+- **Technical Guide (architecture):** `E:\shared programs\CRC Solutions\CRC-Technical-Guide-Receptionist.md`
+- **Deployment Kit (client config):** `E:\shared programs\CRC Solutions\Deployment Kit\`
 - **Guide vs Kit precedence:** [docs/guide-vs-kit-precedence.md](docs/guide-vs-kit-precedence.md)
 - Website widget: `E:\shared programs\Website\website\chat-widget.js`
 - Legacy chat reference: `E:\shared programs\chatbot-update\new-nodes.json`

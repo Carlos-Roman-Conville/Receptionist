@@ -1,5 +1,8 @@
 import { createPublicKey, verify as cryptoVerify } from 'node:crypto';
 
+/** DER SPKI header for an Ed25519 public key; the raw 32-byte key follows it. */
+const ED25519_SPKI_PREFIX = '302a300506032b6570032100';
+
 export interface TelnyxSignatureOptions {
   publicKey: string;
   skipVerification: boolean;
@@ -19,13 +22,25 @@ export function verifyTelnyxWebhook(
   try {
     const payload = `${timestampHeader}|${rawBody}`;
     const signature = Buffer.from(signatureHeader, 'base64');
+    // Telnyx publishes a RAW 32-byte Ed25519 public key, not a DER/SPKI one.
+    // Node's createPublicKey has no raw import, so prepend the fixed 12-byte
+    // Ed25519 SPKI header to turn it into something it will accept.
     const key = createPublicKey({
-      key: Buffer.from(options.publicKey, 'base64'),
+      key: Buffer.concat([
+        Buffer.from(ED25519_SPKI_PREFIX, 'hex'),
+        Buffer.from(options.publicKey, 'base64'),
+      ]),
       format: 'der',
       type: 'spki',
     });
     return cryptoVerify(null, Buffer.from(payload), key, signature);
-  } catch {
+  } catch (error) {
+    // Without this, a malformed key and a genuinely forged signature both
+    // produce a silent 401 and are indistinguishable in the logs.
+    console.error(
+      'Telnyx webhook signature verification failed:',
+      error instanceof Error ? error.message : error,
+    );
     return false;
   }
 }
@@ -46,9 +61,13 @@ export class TelnyxCallControl {
   async startStreaming(callControlId: string, streamUrl: string): Promise<void> {
     await this.postAction(callControlId, 'streaming_start', {
       stream_url: streamUrl,
-      stream_track: 'both_tracks',
-      enable_bidirectional: true,
-      bidirectional_mode: 'rtp',
+      // Inbound only — both_tracks echoes our TTS back into Deepgram and triggers barge-in.
+      stream_track: 'inbound_track',
+      // Telnyx ignores outbound WS audio unless bidirectional RTP is enabled
+      // with the stream_* parameter names (not enable_bidirectional).
+      stream_bidirectional_mode: 'rtp',
+      stream_bidirectional_codec: 'PCMU',
+      stream_bidirectional_sampling_rate: 8000,
     });
   }
 

@@ -3,11 +3,18 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { config as loadEnv } from 'dotenv';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const kitPath =
-  process.env.DEPLOYMENT_KIT_PATH ||
-  'E:/shared programs/Business Model/Deployment Kit';
+
+// Without this, DEPLOYMENT_KIT_PATH from .env is ignored and the script fails
+// even when the variable is correctly configured.
+loadEnv({ path: join(root, '.env') });
+const kitPath = process.env.DEPLOYMENT_KIT_PATH;
+if (!kitPath) {
+  console.error('DEPLOYMENT_KIT_PATH environment variable is required');
+  process.exit(2);
+}
 const slug = process.env.CLIENT_SLUG || 'crc-solutions';
 const clientDir = join(kitPath, 'clients', slug);
 const validateScript = join(kitPath, 'validate.py');

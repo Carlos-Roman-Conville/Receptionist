@@ -4,10 +4,10 @@ Read before writing any code.
 
 ## Sources of truth
 
-1. **Architecture (how to build):** `E:\shared programs\Business Model\CRC-Technical-Guide-Receptionist.md`
+1. **Architecture (how to build):** `E:\shared programs\CRC Solutions\CRC-Technical-Guide-Receptionist.md`
 2. **Implementation summary:** `RECEPTIONIST-BUILD-SPEC.md`
 3. **Build order and scope:** `BUILD-PLAN.md`
-4. **Client config (what to build with):** `E:\shared programs\Business Model\Deployment Kit\clients\<slug>\`
+4. **Client config (what to build with):** `E:\shared programs\CRC Solutions\Deployment Kit\clients\<slug>\`
 5. **Scope gate:** `module-config.yaml` — build ONLY modules set to `true`
 6. **Precedence:** `docs/guide-vs-kit-precedence.md` — Deployment Kit overrides Technical Guide
 

@@ -2,6 +2,7 @@ import { parseCalendarIntegration } from '@receptionist/config';
 import type { ClientConfig } from '@receptionist/config';
 import { addBriefingItem } from '@receptionist/db';
 import type { ToolExecutionContext, ToolExecutionResult } from '../tools/types.js';
+import { formatSlotLabel } from '../time-context.js';
 import { googleCalendarFetch } from './client.js';
 import { loadGoogleCalendarEnv } from './env.js';
 
@@ -102,6 +103,12 @@ function parseClock(time: string): { hour: number; minute: number } {
 
 function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60_000);
+}
+
+/** Round up to the next clean :00/:30 so callers hear "10 AM", not "10:25". */
+function ceilToStep(date: Date, stepMinutes: number): Date {
+  const stepMs = stepMinutes * 60_000;
+  return new Date(Math.ceil(date.getTime() / stepMs) * stepMs);
 }
 
 function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
@@ -240,7 +247,7 @@ export async function checkAvailability(
 
   const timeZone = getTimezone(ctx.config);
   const now = new Date();
-  const timeMin = addMinutes(now, 60);
+  const timeMin = ceilToStep(addMinutes(now, 60), SLOT_STEP_MINUTES);
   const timeMax = new Date(now.getTime() + 7 * 24 * 60 * 60_000);
 
   const busy = await queryBusyIntervals(
@@ -262,9 +269,13 @@ export async function checkAvailability(
     ok: true,
     message:
       slots.length > 0
-        ? `Found ${slots.length} open consultation slot(s).`
+        ? `Found ${slots.length} open consultation slot(s): ${slots
+            .map((slot) => formatSlotLabel(slot, timeZone))
+            .join('; ')}`
         : 'No open consultation slots in the next week.',
     data: {
+      // Spoken labels for the caller; ISO values for book_appointment.
+      slots_local: slots.map((slot) => formatSlotLabel(slot, timeZone)),
       slots: slots.map((slot) => slot.toISOString()),
       duration_minutes: service.durationMinutes,
       buffer_minutes: service.bufferMinutes,

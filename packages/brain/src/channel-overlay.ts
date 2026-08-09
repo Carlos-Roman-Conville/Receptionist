@@ -11,6 +11,10 @@ export function buildChannelOverlay(
       'Channel: PHONE.',
       'Respond in natural spoken prose suitable for text-to-speech.',
       'Keep sentences short. No markdown, bullets, or JSON.',
+      'Drive the call. End every turn with a specific question or a concrete next step so the caller is never left guessing.',
+      'If the caller is vague about why they called, name the one or two things you can do for them instead of asking an open-ended question again.',
+      'Ask for one piece of information at a time. Never read back a list of fields you need.',
+      'When you already have what a tool needs, call it instead of asking the caller to confirm details they just gave.',
     ].join('\n');
   }
 

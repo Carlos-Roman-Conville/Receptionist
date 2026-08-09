@@ -12,8 +12,7 @@ describe('loadClientConfig', () => {
 
   it('rejects missing client folder', () => {
     const paths = resolveClientPaths(
-      process.env.DEPLOYMENT_KIT_PATH ||
-        'E:/shared programs/Business Model/Deployment Kit',
+      '/nonexistent-kit-root',
       'nonexistent-client-slug-xyz',
     );
     expect(() => loadClientConfig(paths)).toThrow(/Missing required file/);

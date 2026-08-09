@@ -62,3 +62,20 @@ export function chunkAudio(audio: Buffer, chunkSize = TELNYX_CHUNK_BYTES): Buffe
 export async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/** Send fixed-duration PCMU frames on a wall clock to avoid timer drift chop. */
+export async function sendPacedPcmuFrames(
+  chunks: Buffer[],
+  sendFrame: (chunk: Buffer) => void,
+  frameMs = 20,
+  shouldContinue?: () => boolean,
+): Promise<void> {
+  const start = performance.now();
+  for (let i = 0; i < chunks.length; i++) {
+    if (shouldContinue && !shouldContinue()) break;
+    sendFrame(chunks[i]);
+    const target = start + (i + 1) * frameMs;
+    const delay = target - performance.now();
+    if (delay > 0) await sleep(delay);
+  }
+}

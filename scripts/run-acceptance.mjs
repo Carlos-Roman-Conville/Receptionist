@@ -5,8 +5,13 @@
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { config as loadEnv } from 'dotenv';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+// DEPLOYMENT_KIT_PATH is required with no fallback, so this must load .env
+// before any child process reads it.
+loadEnv({ path: join(root, '.env') });
 
 function run(label, command, args, opts = {}) {
   console.log(`\n=== ${label} ===`);

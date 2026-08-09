@@ -6,8 +6,8 @@ Modular AI receptionist: phone + web chat sharing one brain, configured per clie
 
 1. Read `BUILD-PLAN.md` for build order and the web chat module spec
 2. Read `RECEPTIONIST-BUILD-SPEC.md` for architecture (refined from the Technical Guide)
-3. Read `E:\shared programs\Business Model\CRC-Technical-Guide-Receptionist.md` for full module specs
-4. Client config: `E:\shared programs\Business Model\Deployment Kit\clients\crc-solutions\`
+3. Read `E:\shared programs\CRC Solutions\CRC-Technical-Guide-Receptionist.md` for full module specs
+4. Client config: `E:\shared programs\CRC Solutions\Deployment Kit\clients\crc-solutions\`
 
 ## Validate config
 
@@ -15,7 +15,7 @@ Modular AI receptionist: phone + web chat sharing one brain, configured per clie
 npm run validate:client
 # or:
 pip install pyyaml
-python "E:\shared programs\Business Model\Deployment Kit\validate.py" "E:\shared programs\Business Model\Deployment Kit\clients\crc-solutions"
+python "E:\shared programs\CRC Solutions\Deployment Kit\validate.py" "E:\shared programs\CRC Solutions\Deployment Kit\clients\crc-solutions"
 ```
 
 ## Dump assembled prompt (Phase 0)
@@ -80,7 +80,7 @@ Static site: `E:\shared programs\Website\website\site-config.js` → `https://ch
 npm run validate:wiring
 ```
 
-Production deploy: see `deploy/README.md` (Caddy, Docker, DNS for `chat.` and `voice.` subdomains).
+Production deploy: see `deploy/README.md` (VPS Docker) or `deploy/windows-cloudflare-tunnel.md` (voice on Windows + Cloudflare Tunnel).
 
 ## Acceptance tests (Phase 6)
 
@@ -116,8 +116,8 @@ npm test
 
 | Path | Purpose |
 |------|---------|
-| `E:\shared programs\Business Model\Deployment Kit\` | Client YAML/MD configs |
-| `E:\shared programs\Business Model\CRC-Technical-Guide-Receptionist.md` | Architecture and how-to-build |
+| `E:\shared programs\CRC Solutions\Deployment Kit\` | Client YAML/MD configs |
+| `E:\shared programs\CRC Solutions\CRC-Technical-Guide-Receptionist.md` | Architecture and how-to-build |
 | `docs/guide-vs-kit-precedence.md` | When Guide and Kit disagree, Kit wins |
 | `E:\shared programs\Website\` | Chat widget frontend |
 | `E:\shared programs\chatbot-update\new-nodes.json` | Legacy chat reference (flow + scoring) |

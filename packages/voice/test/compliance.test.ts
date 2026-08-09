@@ -3,6 +3,7 @@ import { loadClientConfigFromEnv } from '@receptionist/config';
 import {
   buildOpeningScript,
   hardCapMinutes,
+  openingQuestion,
   softCapMinutes,
 } from '../src/compliance.js';
 
@@ -14,6 +15,12 @@ describe('phone compliance scripts', () => {
     expect(opening.length).toBeGreaterThan(20);
     expect(opening).toContain('automated assistant');
     expect(opening.toLowerCase()).toContain('recorded');
+  });
+
+  it('ends the opening with a question so the caller is not left waiting', () => {
+    const opening = buildOpeningScript(config);
+    expect(opening.trim().endsWith('?')).toBe(true);
+    expect(opening).toContain(openingQuestion(config));
   });
 
   it('reads soft and hard caps from compliance config', () => {

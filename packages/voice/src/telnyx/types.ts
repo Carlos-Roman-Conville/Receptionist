@@ -63,3 +63,10 @@ export function decodeMediaPayload(payload: string): Buffer {
 export function encodeMediaPayload(audio: Buffer): string {
   return audio.toString('base64');
 }
+
+/** True when Telnyx media should be sent to STT (caller audio only). */
+export function isInboundMediaTrack(track: string | undefined): boolean {
+  if (!track) return true;
+  const normalized = track.toLowerCase();
+  return normalized === 'inbound' || normalized === 'inbound_track';
+}

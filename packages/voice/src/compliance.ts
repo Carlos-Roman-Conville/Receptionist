@@ -1,5 +1,14 @@
 import type { ClientConfig } from '@receptionist/config';
 
+/** Asked when the kit does not supply wording; without it the AI waits in silence. */
+const DEFAULT_OPENING_QUESTION = 'How can I help you today?';
+
+export function openingQuestion(config: ClientConfig): string {
+  const greeting = config.compliance.greeting as Record<string, unknown> | undefined;
+  const configured = String(greeting?.opening_question ?? '').trim();
+  return configured || DEFAULT_OPENING_QUESTION;
+}
+
 export function buildOpeningScript(config: ClientConfig): string {
   const disclosure = config.compliance.disclosure as Record<string, unknown> | undefined;
   const recording = config.compliance.recording as Record<string, unknown> | undefined;
@@ -7,11 +16,9 @@ export function buildOpeningScript(config: ClientConfig): string {
   const disclosureScript = String(disclosure?.inbound_disclosure_script ?? '').trim();
   const recordingScript = String(recording?.notification_script ?? '').trim();
 
-  if (disclosureScript && recordingScript) {
-    return `${disclosureScript} ${recordingScript}`;
-  }
-
-  return disclosureScript || recordingScript;
+  return [disclosureScript, recordingScript, openingQuestion(config)]
+    .filter(Boolean)
+    .join(' ');
 }
 
 export function hardCapScript(config: ClientConfig): string {

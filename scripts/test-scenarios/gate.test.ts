@@ -5,9 +5,7 @@ import { join } from 'node:path';
 
 describe('acceptance gate — validate.py', () => {
   it('PASS for crc-solutions Deployment Kit', () => {
-    const kitPath =
-      process.env.DEPLOYMENT_KIT_PATH ||
-      'E:/shared programs/Business Model/Deployment Kit';
+    const kitPath = process.env.DEPLOYMENT_KIT_PATH || '/nonexistent-kit-root';
     const slug = process.env.CLIENT_SLUG || 'crc-solutions';
     const validateScript = join(kitPath, 'validate.py');
     const clientDir = join(kitPath, 'clients', slug);

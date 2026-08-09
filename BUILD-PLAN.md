@@ -2,9 +2,9 @@
 
 **Client:** crc-solutions  
 **Status:** Phase 6 — Acceptance tests  
-**Architecture guide:** `E:\shared programs\Business Model\CRC-Technical-Guide-Receptionist.md`  
+**Architecture guide:** `E:\shared programs\CRC Solutions\CRC-Technical-Guide-Receptionist.md`  
 **Precedence:** `docs/guide-vs-kit-precedence.md`
-**Config:** `E:\shared programs\Business Model\Deployment Kit\clients\crc-solutions\`  
+**Config:** `E:\shared programs\CRC Solutions\Deployment Kit\clients\crc-solutions\`  
 **Website:** `E:\shared programs\Website\`  
 **Legacy chat:** Taken down. Rebuild clean. Reference: `E:\shared programs\chatbot-update\new-nodes.json`
 

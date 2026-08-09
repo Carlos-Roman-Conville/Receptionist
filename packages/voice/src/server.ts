@@ -22,6 +22,7 @@ import {
 import {
   callControlIdFromPayload,
   decodeMediaPayload,
+  isInboundMediaTrack,
   parseTelnyxMediaMessage,
   parseTelnyxWebhook,
 } from './telnyx/types.js';
@@ -137,7 +138,19 @@ export function createVoiceServer(options: CreateVoiceServerOptions) {
 
         if (parsed.eventType === 'call.answered') {
           const streamUrl = mediaStreamUrl(voiceEnv.publicWsBaseUrl, callControlId);
+          request.log.info({ callControlId, streamUrl }, 'Starting Telnyx media stream');
           await telnyx.startStreaming(callControlId, streamUrl);
+        }
+
+        if (
+          parsed.eventType === 'streaming.started' ||
+          parsed.eventType === 'streaming.stopped' ||
+          parsed.eventType === 'streaming.failed'
+        ) {
+          request.log.info(
+            { callControlId, eventType: parsed.eventType, payload: parsed.payload },
+            'Telnyx streaming lifecycle event',
+          );
         }
 
         if (parsed.eventType === 'call.hangup') {
@@ -174,6 +187,46 @@ export function createVoiceServer(options: CreateVoiceServerOptions) {
   });
 
   async function attachMediaSocket(socket: WebSocket, callControlId: string) {
+    const pendingMessages: string[] = [];
+    let session: ReturnType<CallSessionManager['create']> | null = null;
+
+    const handleMediaMessage = (raw: string) => {
+      if (!session) return;
+
+      const message = parseTelnyxMediaMessage(raw);
+      if (!message?.event) return;
+
+      if (message.event === 'start') {
+        app.log.info({ callControlId }, 'Telnyx media stream started');
+        void session.start();
+        return;
+      }
+
+      if (message.event === 'media' && message.media?.payload) {
+        if (!isInboundMediaTrack(message.media.track)) return;
+        session.ingestInboundAudio(decodeMediaPayload(message.media.payload));
+        return;
+      }
+
+      if (message.event === 'stop') {
+        app.log.info({ callControlId }, 'Telnyx media stream stopped');
+        void session.close();
+      }
+    };
+
+    socket.on('message', (raw) => {
+      const text = String(raw);
+      if (!session) {
+        pendingMessages.push(text);
+        return;
+      }
+      handleMediaMessage(text);
+    });
+
+    socket.on('close', () => {
+      void session?.close();
+    });
+
     const call = await getCallByTelnyxControlId(options.pool, callControlId);
     if (!call) {
       socket.close(1008, 'unknown call');
@@ -181,18 +234,22 @@ export function createVoiceServer(options: CreateVoiceServerOptions) {
     }
 
     const externalSessionId = `call_${callControlId}`;
+    let outboundFrames = 0;
     const sendMedia = (payloadBase64: string) => {
-      if (socket.readyState === socket.OPEN) {
-        socket.send(
-          JSON.stringify({
-            event: 'media',
-            media: { payload: payloadBase64 },
-          }),
-        );
+      if (socket.readyState !== socket.OPEN) return;
+      socket.send(
+        JSON.stringify({
+          event: 'media',
+          media: { payload: payloadBase64 },
+        }),
+      );
+      outboundFrames += 1;
+      if (outboundFrames === 1) {
+        app.log.info({ callControlId }, 'Sent first outbound audio frame to Telnyx');
       }
     };
 
-    const session = sessions.create({
+    session = sessions.create({
       callControlId,
       callDbId: call.id,
       callerNumber: call.caller_number,
@@ -208,28 +265,9 @@ export function createVoiceServer(options: CreateVoiceServerOptions) {
 
     session.attachMedia();
 
-    socket.on('message', (raw) => {
-      const message = parseTelnyxMediaMessage(String(raw));
-      if (!message?.event) return;
-
-      if (message.event === 'start') {
-        void session.start();
-        return;
-      }
-
-      if (message.event === 'media' && message.media?.payload) {
-        session.ingestInboundAudio(decodeMediaPayload(message.media.payload));
-        return;
-      }
-
-      if (message.event === 'stop') {
-        void session.close();
-      }
-    });
-
-    socket.on('close', () => {
-      void session.close();
-    });
+    for (const message of pendingMessages) {
+      handleMediaMessage(message);
+    }
   }
 
   return app;

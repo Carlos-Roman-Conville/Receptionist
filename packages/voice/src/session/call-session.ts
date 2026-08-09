@@ -17,7 +17,7 @@ import { DeepgramLiveClient } from '../deepgram/client.js';
 import {
   chunkAudio,
   ElevenLabsClient,
-  sleep,
+  sendPacedPcmuFrames,
   TELNYX_CHUNK_BYTES,
 } from '../elevenlabs/client.js';
 import {
@@ -102,8 +102,12 @@ export class CallSession {
       });
     }
 
-    if (this.speaking && text.length > 2) {
-      this.bargeIn();
+    // Barge-in on caller speech only — ignore interim STT noise/echo.
+    if (this.speaking && isFinal) {
+      const words = text.trim().split(/\s+/).filter(Boolean);
+      if (words.length >= 2) {
+        this.bargeIn();
+      }
     }
 
     if (!isFinal) return;
@@ -231,13 +235,23 @@ export class CallSession {
       const audio = await this.options.elevenLabs.synthesize(text);
       if (generation !== this.speechGeneration || this.closed) return;
 
-      for (const chunk of chunkAudio(audio, TELNYX_CHUNK_BYTES)) {
-        if (generation !== this.speechGeneration || this.closed) break;
-        this.options.sendMedia(encodeMediaPayload(chunk));
-        await sleep(20);
-      }
+      const chunks = chunkAudio(audio, TELNYX_CHUNK_BYTES);
+      console.info(
+        `[voice] TTS ready call=${this.options.callControlId} bytes=${audio.length} chunks=${chunks.length}`,
+      );
+
+      await sendPacedPcmuFrames(
+        chunks,
+        (chunk) => this.options.sendMedia(encodeMediaPayload(chunk)),
+        20,
+        () => generation === this.speechGeneration && !this.closed,
+      );
     } catch (err) {
       if (generation === this.speechGeneration) {
+        console.error(
+          `[voice] TTS failed call=${this.options.callControlId}:`,
+          err instanceof Error ? err.message : err,
+        );
         await logInteraction(this.options.pool, {
           clientSlug: this.options.config.paths.clientSlug,
           callId: this.options.callDbId,

@@ -28,7 +28,7 @@ describe('CallSession', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.EMERGENCY_TRANSFER_NUMBER = '+18563979706';
+    process.env.EMERGENCY_TRANSFER_NUMBER = '+12155550142';
     vi.mocked(getSessionByExternalId).mockResolvedValue(null);
     vi.mocked(getSessionMessages).mockResolvedValue([]);
     vi.mocked(updateCall).mockResolvedValue(undefined);
@@ -64,7 +64,7 @@ describe('CallSession', () => {
 
     await session['processCallerTurn']('Our system is down');
 
-    expect(transfer).toHaveBeenCalledWith('ctrl_test', '+18563979706');
+    expect(transfer).toHaveBeenCalledWith('ctrl_test', '+12155550142');
     expect(respond).toHaveBeenCalledWith(
       expect.objectContaining({
         channel: 'phone',

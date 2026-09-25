@@ -34,7 +34,7 @@ describe('P-scenarios — phone acceptance', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.EMERGENCY_TRANSFER_NUMBER = '+18563979706';
+    process.env.EMERGENCY_TRANSFER_NUMBER = '+12155550142';
     process.env.GOOGLE_CALENDAR_CLIENT_ID = '';
     process.env.GOOGLE_CALENDAR_CLIENT_SECRET = '';
     process.env.GOOGLE_CALENDAR_REFRESH_TOKEN = '';
@@ -73,7 +73,7 @@ describe('P-scenarios — phone acceptance', () => {
   });
 
   it('P2 — emergency transfer + Pushover on alert tool', async () => {
-    process.env.EMERGENCY_TRANSFER_NUMBER = '+18563979706';
+    process.env.EMERGENCY_TRANSFER_NUMBER = '+12155550142';
     const transfer = vi.fn().mockResolvedValue(undefined);
     const telnyx = { transfer } as never;
 

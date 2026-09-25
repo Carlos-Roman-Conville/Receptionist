@@ -30,7 +30,7 @@ export function expandDigitsForSpeech(digits: string): string {
 
 /**
  * Rewrite digit-heavy phone strings so ElevenLabs does not race through
- * "856-397-9706" and glitch into stretched vowels on the next word.
+ * "215-555-0142" and glitch into stretched vowels on the next word.
  */
 export function prepareSpokenText(text: string): string {
   return text

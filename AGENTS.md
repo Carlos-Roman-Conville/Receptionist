@@ -24,7 +24,7 @@ Read before writing any code.
 
 Active modules: phone_handling, web_chat, calendar_management, call_screening, daily_briefing, emergency_routing.
 
-Web chat: clean rebuild. Legacy n8n workflow is reference for lead scoring flow only. Widget lives in `E:\shared programs\Website\`.
+Web chat: clean rebuild. Legacy n8n workflow is reference for lead scoring flow only. Widget lives in `E:\shared programs\CRC Solutions\Website\`.
 
 Notifications: Pushover for owner alerts; Google Calendar invite for caller confirmation (SMS deferred until 10DLC).
 

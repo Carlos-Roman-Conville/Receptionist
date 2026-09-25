@@ -5,7 +5,7 @@
 **Architecture guide:** `E:\shared programs\CRC Solutions\CRC-Technical-Guide-Receptionist.md`  
 **Precedence:** `docs/guide-vs-kit-precedence.md`
 **Config:** `E:\shared programs\CRC Solutions\Deployment Kit\clients\crc-solutions\`  
-**Website:** `E:\shared programs\Website\`  
+**Website:** `E:\shared programs\CRC Solutions\Website\`  
 **Legacy chat:** Taken down. Rebuild clean. Reference: `E:\shared programs\chatbot-update\new-nodes.json`
 
 ---
@@ -154,7 +154,7 @@ Same kit files. Channel overlay changes output format only (prose vs JSON) and d
 - Lead scoring: hot = clear pain + wants consult; warm = vague; cold = browsing
 - Never quote prices; never deny AI
 
-### 6.6 Website changes (`E:\shared programs\Website\`)
+### 6.6 Website changes (`E:\shared programs\CRC Solutions\Website\`)
 
 Minimal:
 

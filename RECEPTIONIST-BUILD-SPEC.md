@@ -110,5 +110,5 @@ Identity, Personality, Services, Rules, Tools, Escalation, Boundaries — assemb
 - **Technical Guide (architecture):** `E:\shared programs\CRC Solutions\CRC-Technical-Guide-Receptionist.md`
 - **Deployment Kit (client config):** `E:\shared programs\CRC Solutions\Deployment Kit\`
 - **Guide vs Kit precedence:** [docs/guide-vs-kit-precedence.md](docs/guide-vs-kit-precedence.md)
-- Website widget: `E:\shared programs\Website\website\chat-widget.js`
+- Website widget: `E:\shared programs\CRC Solutions\Website\website\chat-widget.js`
 - Legacy chat reference: `E:\shared programs\chatbot-update\new-nodes.json`

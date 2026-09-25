@@ -32,7 +32,7 @@ Services:
 
 ## Website wiring
 
-Static site (`E:\shared programs\Website\website\`) loads `site-config.js`:
+Static site (`E:\shared programs\CRC Solutions\Website\website\`) loads `site-config.js`:
 
 ```javascript
 window.CRC_RECEPTIONIST_API = 'https://chat.crc-solutions.org';

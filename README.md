@@ -74,7 +74,7 @@ Pushover fires immediately on emergency (`send_emergency_alert` tool). SMTP requ
 
 ## Website wiring (Phase 5)
 
-Static site: `E:\shared programs\Website\website\site-config.js` → `https://chat.crc-solutions.org`
+Static site: `E:\shared programs\CRC Solutions\Website\website\site-config.js` → `https://chat.crc-solutions.org`
 
 ```bash
 npm run validate:wiring
@@ -119,7 +119,7 @@ npm test
 | `E:\shared programs\CRC Solutions\Deployment Kit\` | Client YAML/MD configs |
 | `E:\shared programs\CRC Solutions\CRC-Technical-Guide-Receptionist.md` | Architecture and how-to-build |
 | `docs/guide-vs-kit-precedence.md` | When Guide and Kit disagree, Kit wins |
-| `E:\shared programs\Website\` | Chat widget frontend |
+| `E:\shared programs\CRC Solutions\Website\` | Chat widget frontend |
 | `E:\shared programs\chatbot-update\new-nodes.json` | Legacy chat reference (flow + scoring) |
 
 ## Status

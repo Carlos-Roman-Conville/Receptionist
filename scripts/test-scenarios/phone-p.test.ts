@@ -59,7 +59,8 @@ describe('P-scenarios — phone acceptance', () => {
       },
     );
 
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('NOT confirmed');
     expect(addBriefingItem).toHaveBeenCalledWith(
       pool,
       expect.objectContaining({ itemType: 'booking' }),
@@ -132,14 +133,22 @@ describe('P-scenarios — phone acceptance', () => {
       externalSessionId: 'call_ctrl_p3',
       config,
       pool,
-      brain: { respond: vi.fn() } as never,
+      brain: {
+        respond: vi.fn().mockResolvedValue({
+          reply: 'Understood.',
+          channel: 'phone',
+          sessionDbId: 's-p3',
+          classifier: 'GENERAL',
+          toolResults: [],
+        }),
+      } as never,
       telnyx: { transfer: vi.fn() } as never,
       elevenLabs: { synthesize: vi.fn() } as never,
       deepgramApiKey: 'test',
       sendMedia: vi.fn(),
     });
 
-    await session['onTranscript']('Please do not record this call', false);
+    await session['onTranscript']('Please do not record this call', 'utterance');
     expect(updateCall).toHaveBeenCalledWith(
       pool,
       'call-p3',
@@ -188,7 +197,7 @@ describe('P-scenarios — phone acceptance', () => {
       'book_appointment',
       {
         name: 'Jordan',
-        start_time: '2026-08-08T09:00:00-04:00',
+        start_time: '2026-08-11T09:00:00-04:00',
       },
       {
         pool,
@@ -198,7 +207,8 @@ describe('P-scenarios — phone acceptance', () => {
         lastUserMessage: 'Can I get the first slot tomorrow morning?',
       },
     );
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('NOT confirmed');
     const enforcement = String(
       (config.services.pricing_policy as { min_notice_enforcement?: string })
         ?.min_notice_enforcement ?? 'soft',

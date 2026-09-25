@@ -70,10 +70,19 @@ function formatVipList(config: ClientConfig): string {
   return JSON.stringify(config.vipList, null, 2);
 }
 
-function sectionIdentity(config: ClientConfig): string {
+export interface AssembledPrompt {
+  systemPrompt: string;
+  tools: ReturnType<typeof getActiveTools>;
+  sections: Record<string, string>;
+}
+
+export type PromptChannel = 'phone' | 'web_chat';
+
+function sectionIdentity(config: ClientConfig, channel?: PromptChannel): string {
   const id = config.businessDetails.identity as Record<string, unknown>;
   const hours = config.businessDetails.hours;
   const disc = config.compliance.disclosure as Record<string, unknown> | undefined;
+  const includeSpokenCompliance = channel !== 'phone';
 
   return [
     `You are the automated receptionist for ${str(id.business_name)}.`,
@@ -89,10 +98,10 @@ function sectionIdentity(config: ClientConfig): string {
       ? `After hours: ${str(hours.after_hours_policy)}`
       : '',
     '',
-    disc?.inbound_disclosure_required
+    includeSpokenCompliance && disc?.inbound_disclosure_required
       ? `Inbound disclosure (first line): ${str(disc?.inbound_disclosure_script)}`
       : '',
-    disc?.inbound_disclosure_timing
+    includeSpokenCompliance && disc?.inbound_disclosure_timing
       ? `Disclosure timing: ${str(disc?.inbound_disclosure_timing)}`
       : '',
     str(disc?.if_caller_asks_if_ai)
@@ -163,10 +172,11 @@ function sectionTools(config: ClientConfig): string {
     .join('\n');
 }
 
-function sectionEscalation(config: ClientConfig): string {
+function sectionEscalation(config: ClientConfig, channel?: PromptChannel): string {
   const esc = config.compliance.escalation;
   const em = config.compliance.emergency as Record<string, unknown> | undefined;
   const rec = config.compliance.recording as Record<string, unknown> | undefined;
+  const includeRecordingNotice = channel !== 'phone';
 
   return [
     'Escalation triggers:',
@@ -190,7 +200,7 @@ function sectionEscalation(config: ClientConfig): string {
       ? `If transfer fails: ${str(em?.if_no_one_answers)}`
       : '',
     '',
-    rec?.calls_are_recorded
+    rec?.calls_are_recorded && includeRecordingNotice
       ? `Recording notice: ${str(rec?.notification_script)} (${str(rec?.notification_timing)})`
       : '',
     str(rec?.if_caller_declines_recording)
@@ -212,25 +222,23 @@ function sectionBoundaries(config: ClientConfig): string {
   ].join('\n');
 }
 
-export interface AssembledPrompt {
-  systemPrompt: string;
-  tools: ReturnType<typeof getActiveTools>;
-  sections: Record<string, string>;
-}
-
 /**
  * Assembles the 7-section system prompt from Shared RAG + vip-list only.
  * Does NOT read module-config.yaml or integrations.yaml content into the prompt
  * (module-config drives tool gating via getActiveTools; integrations is plumbing).
  */
-export function assemblePrompt(config: ClientConfig): AssembledPrompt {
+export function assemblePrompt(
+  config: ClientConfig,
+  options?: { channel?: PromptChannel },
+): AssembledPrompt {
+  const channel = options?.channel;
   const sections = {
-    identity: sectionIdentity(config),
+    identity: sectionIdentity(config, channel),
     personality: sectionPersonality(),
     services: sectionServices(config),
     rules: sectionRules(config),
     tools: sectionTools(config),
-    escalation: sectionEscalation(config),
+    escalation: sectionEscalation(config, channel),
     boundaries: sectionBoundaries(config),
   };
 

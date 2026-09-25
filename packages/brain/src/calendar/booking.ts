@@ -65,15 +65,63 @@ function parseDayHours(
   day:
     | { open?: string | null; close?: string | null; by_appointment?: boolean }
     | undefined,
-): { open: string; close: string } | null {
+): { open: string; close: string; byAppointmentOnly: boolean } | null {
   if (!day) return null;
   if (day.by_appointment && (day.open == null || day.close == null)) {
     return null;
   }
   if (typeof day.open === 'string' && typeof day.close === 'string') {
-    return { open: day.open, close: day.close };
+    return {
+      open: day.open,
+      close: day.close,
+      byAppointmentOnly: day.by_appointment === true,
+    };
   }
   return null;
+}
+
+/** Reject writes outside configured business hours (used by book/reschedule). */
+export function validateBookingSlot(
+  config: ClientConfig,
+  service: BookableService,
+  startTime: Date,
+): { ok: true } | { ok: false; message: string } {
+  const timeZone = getTimezone(config);
+  const regular = config.businessDetails.hours?.regular ?? {};
+  const { weekday, hour, minute } = localDateParts(startTime, timeZone);
+  const dayHours = parseDayHours(
+    regular[weekday as keyof typeof regular] as
+      | { open?: string | null; close?: string | null; by_appointment?: boolean }
+      | undefined,
+  );
+
+  if (!dayHours) {
+    return {
+      ok: false,
+      message: `${weekday} is not bookable on the live calendar. Use check_availability and offer only returned slots.`,
+    };
+  }
+
+  const open = parseClock(dayHours.open);
+  const close = parseClock(dayHours.close);
+  const totalBlockMinutes = service.durationMinutes + service.bufferMinutes;
+  const slotEnd = addMinutes(startTime, totalBlockMinutes);
+  const endParts = localDateParts(slotEnd, timeZone);
+
+  const afterOpen =
+    hour > open.hour || (hour === open.hour && minute >= open.minute);
+  const beforeClose =
+    endParts.hour < close.hour ||
+    (endParts.hour === close.hour && endParts.minute <= close.minute);
+
+  if (!afterOpen || !beforeClose) {
+    return {
+      ok: false,
+      message: `That time is outside business hours (${dayHours.open}–${dayHours.close} ${timeZone}). Use check_availability for open slots.`,
+    };
+  }
+
+  return { ok: true };
 }
 
 function localDateParts(date: Date, timeZone: string) {
@@ -179,6 +227,7 @@ function generateCandidateSlots(
   timeMin: Date,
   timeMax: Date,
   busy: BusyInterval[],
+  maxSlots = 48,
 ): Date[] {
   const timeZone = getTimezone(config);
   const regular = config.businessDetails.hours?.regular ?? {};
@@ -187,7 +236,7 @@ function generateCandidateSlots(
 
   for (
     let cursor = new Date(timeMin);
-    cursor < timeMax && slots.length < 12;
+    cursor < timeMax && slots.length < maxSlots;
     cursor = addMinutes(cursor, SLOT_STEP_MINUTES)
   ) {
     const { weekday, hour, minute } = localDateParts(cursor, timeZone);
@@ -219,7 +268,140 @@ function generateCandidateSlots(
     slots.push(new Date(cursor));
   }
 
-  return slots.slice(0, 5);
+  return slots;
+}
+
+const WEEKDAYS = [
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+] as const;
+
+export interface PreferredSlotFilter {
+  weekdays: Set<string>;
+  isoDates: Set<string>;
+  dayPart: 'morning' | 'afternoon' | null;
+  labels: string[];
+}
+
+function isoDateInZone(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+/** Parse tool preferred_dates like "Tuesday", "2026-08-11", "morning". */
+export function parsePreferredDates(
+  raw: unknown,
+  now: Date,
+  timeZone: string,
+): PreferredSlotFilter {
+  const values = Array.isArray(raw)
+    ? raw.map((v) => String(v).trim()).filter(Boolean)
+    : typeof raw === 'string' && raw.trim()
+      ? [raw.trim()]
+      : [];
+
+  const weekdays = new Set<string>();
+  const isoDates = new Set<string>();
+  let dayPart: 'morning' | 'afternoon' | null = null;
+  const labels: string[] = [];
+
+  const todayIso = isoDateInZone(now, timeZone);
+  const todayWeekday = localDateParts(now, timeZone).weekday;
+
+  for (const value of values) {
+    const lower = value.toLowerCase();
+    labels.push(value);
+
+    if (lower === 'morning' || lower === 'afternoon') {
+      dayPart = lower;
+      continue;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      isoDates.add(value);
+      continue;
+    }
+
+    if (lower === 'today') {
+      isoDates.add(todayIso);
+      continue;
+    }
+
+    if (lower === 'tomorrow') {
+      const tomorrow = addMinutes(now, 24 * 60);
+      isoDates.add(isoDateInZone(tomorrow, timeZone));
+      continue;
+    }
+
+    const weekday = WEEKDAYS.find((day) => lower.includes(day));
+    if (weekday) {
+      weekdays.add(weekday);
+    }
+  }
+
+  // If they named a weekday that is today and today is already past business hours,
+  // keep the next occurrence via weekday filter (slots before timeMin are already excluded).
+  void todayWeekday;
+
+  return { weekdays, isoDates, dayPart, labels };
+}
+
+function matchesPreferred(
+  slot: Date,
+  timeZone: string,
+  preferred: PreferredSlotFilter,
+): boolean {
+  const hasDayPreference =
+    preferred.weekdays.size > 0 || preferred.isoDates.size > 0;
+  if (!hasDayPreference && !preferred.dayPart) return true;
+
+  const parts = localDateParts(slot, timeZone);
+  const iso = isoDateInZone(slot, timeZone);
+
+  if (hasDayPreference) {
+    const dayOk =
+      preferred.isoDates.has(iso) || preferred.weekdays.has(parts.weekday);
+    if (!dayOk) return false;
+  }
+
+  if (preferred.dayPart === 'morning' && parts.hour >= 12) return false;
+  if (preferred.dayPart === 'afternoon' && parts.hour < 12) return false;
+
+  return true;
+}
+
+function selectSlotsForPreference(
+  allSlots: Date[],
+  preferred: PreferredSlotFilter,
+  timeZone: string,
+  limit = 5,
+): { slots: Date[]; matchedPreference: boolean } {
+  const hasPreference =
+    preferred.weekdays.size > 0 ||
+    preferred.isoDates.size > 0 ||
+    preferred.dayPart !== null;
+
+  if (!hasPreference) {
+    return { slots: allSlots.slice(0, limit), matchedPreference: true };
+  }
+
+  const matched = allSlots.filter((slot) =>
+    matchesPreferred(slot, timeZone, preferred),
+  );
+  if (matched.length > 0) {
+    return { slots: matched.slice(0, limit), matchedPreference: true };
+  }
+
+  return { slots: allSlots.slice(0, limit), matchedPreference: false };
 }
 
 export function calendarConfigured(config: ClientConfig): boolean {
@@ -248,7 +430,8 @@ export async function checkAvailability(
   const timeZone = getTimezone(ctx.config);
   const now = new Date();
   const timeMin = ceilToStep(addMinutes(now, 60), SLOT_STEP_MINUTES);
-  const timeMax = new Date(now.getTime() + 7 * 24 * 60 * 60_000);
+  const timeMax = new Date(now.getTime() + 14 * 24 * 60 * 60_000);
+  const preferred = parsePreferredDates(input.preferred_dates, now, timeZone);
 
   const busy = await queryBusyIntervals(
     env,
@@ -257,26 +440,42 @@ export async function checkAvailability(
     timeMax,
     timeZone,
   );
-  const slots = generateCandidateSlots(
+  const allSlots = generateCandidateSlots(
     ctx.config,
     service,
     timeMin,
     timeMax,
     busy,
   );
+  const { slots, matchedPreference } = selectSlotsForPreference(
+    allSlots,
+    preferred,
+    timeZone,
+  );
+
+  const preferenceLabel = preferred.labels.join(', ');
+  let message: string;
+  if (slots.length === 0) {
+    message = 'No open consultation slots in the next two weeks.';
+  } else if (!matchedPreference && preferenceLabel) {
+    message = `No open slots matched "${preferenceLabel}". Next available: ${slots
+      .map((slot) => formatSlotLabel(slot, timeZone))
+      .join('; ')}`;
+  } else {
+    message = `Found ${slots.length} open consultation slot(s): ${slots
+      .map((slot) => formatSlotLabel(slot, timeZone))
+      .join('; ')}`;
+  }
 
   return {
     ok: true,
-    message:
-      slots.length > 0
-        ? `Found ${slots.length} open consultation slot(s): ${slots
-            .map((slot) => formatSlotLabel(slot, timeZone))
-            .join('; ')}`
-        : 'No open consultation slots in the next week.',
+    message,
     data: {
       // Spoken labels for the caller; ISO values for book_appointment.
       slots_local: slots.map((slot) => formatSlotLabel(slot, timeZone)),
       slots: slots.map((slot) => slot.toISOString()),
+      matched_preference: matchedPreference,
+      preferred_dates: preferred.labels,
       duration_minutes: service.durationMinutes,
       buffer_minutes: service.bufferMinutes,
       timezone: timeZone,
@@ -320,9 +519,10 @@ export async function bookAppointment(
       metadata: input,
     });
     return {
-      ok: true,
-      message: 'Appointment booking queued for calendar write.',
-      data: input,
+      ok: false,
+      message:
+        'Calendar is unavailable; booking was NOT confirmed. Tell the caller someone will follow up.',
+      data: { status: 'queued', ...input },
     };
   }
 
@@ -330,6 +530,14 @@ export async function bookAppointment(
   if (Number.isNaN(startTime.getTime())) {
     return { ok: false, message: 'Invalid start_time for booking.' };
   }
+
+  const hoursCheck = validateBookingSlot(ctx.config, service, startTime);
+  if (!hoursCheck.ok) {
+    return { ok: false, message: hoursCheck.message };
+  }
+
+  const timeZone = getTimezone(ctx.config);
+  const bookedStartLocal = formatSlotLabel(startTime, timeZone);
 
   const attendeeName = String(input.name ?? 'Consultation guest');
   const attendeeEmail =
@@ -405,13 +613,16 @@ export async function bookAppointment(
 
   return {
     ok: true,
-    message: 'Appointment booked on Google Calendar.',
+    message: `Appointment booked. Read confirmation_time verbatim: ${bookedStartLocal}`,
     data: {
       event_id: consultEvent.id,
       html_link: consultEvent.htmlLink ?? null,
       start_time: startTime.toISOString(),
+      confirmation_time: bookedStartLocal,
+      booked_start_local: bookedStartLocal,
       duration_minutes: service.durationMinutes,
       buffer_minutes: service.bufferMinutes,
+      timezone: timeZone,
     },
   };
 }
@@ -437,6 +648,13 @@ export async function rescheduleAppointment(
   if (Number.isNaN(originalStart.getTime()) || Number.isNaN(newStart.getTime())) {
     return { ok: false, message: 'Invalid original_start or new_start.' };
   }
+
+  const hoursCheck = validateBookingSlot(ctx.config, service, newStart);
+  if (!hoursCheck.ok) {
+    return { ok: false, message: hoursCheck.message };
+  }
+
+  const timeZone = getTimezone(ctx.config);
 
   const events = await listEventsNear(
     env,
@@ -467,10 +685,18 @@ export async function rescheduleAppointment(
 
   await maybeFlagShortNoticeBooking(ctx, newStart);
 
+  const bookedStartLocal = formatSlotLabel(newStart, timeZone);
+
   return {
     ok: true,
-    message: 'Appointment rescheduled on Google Calendar.',
-    data: { event_id: consultEvent.id, new_start: newStart.toISOString() },
+    message: `Appointment rescheduled. Read confirmation_time verbatim: ${bookedStartLocal}`,
+    data: {
+      event_id: consultEvent.id,
+      new_start: newStart.toISOString(),
+      confirmation_time: bookedStartLocal,
+      booked_start_local: bookedStartLocal,
+      timezone: timeZone,
+    },
   };
 }
 

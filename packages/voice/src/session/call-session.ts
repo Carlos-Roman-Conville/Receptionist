@@ -12,6 +12,7 @@ import {
   hardCapMinutes,
   hardCapScript,
   softCapMinutes,
+  stripRepeatedCompliance,
 } from '../compliance.js';
 import { DeepgramLiveClient } from '../deepgram/client.js';
 import {
@@ -25,6 +26,7 @@ import {
   callerDeclinedRecording,
   resolveEmergencyTransferNumber,
 } from '../env.js';
+import { prepareSpokenText } from '../spoken-text.js';
 import type { TelnyxCallControl } from '../telnyx/client.js';
 import { encodeMediaPayload } from '../telnyx/types.js';
 
@@ -68,7 +70,7 @@ export class CallSession {
     this.deepgram = new DeepgramLiveClient({
       apiKey: this.options.deepgramApiKey,
       onTranscript: (transcript) => {
-        void this.onTranscript(transcript.text, transcript.isFinal);
+        void this.onTranscript(transcript.text, transcript.kind);
       },
     });
     this.deepgram.connect();
@@ -87,8 +89,26 @@ export class CallSession {
     }
   }
 
-  private async onTranscript(text: string, isFinal: boolean): Promise<void> {
+  private async onTranscript(
+    text: string,
+    kind: 'interim' | 'utterance',
+  ): Promise<void> {
     if (this.closed || this.transferred) return;
+
+    if (kind === 'interim') {
+      // Barge-in while the AI is speaking — interim is faster than waiting for finals.
+      if (this.speaking) {
+        const words = text.trim().split(/\s+/).filter(Boolean);
+        if (words.length >= 2) {
+          this.bargeIn();
+        }
+      }
+      return;
+    }
+
+    console.info(
+      `[voice] caller utterance call=${this.options.callControlId}: ${text.slice(0, 120)}`,
+    );
 
     if (callerDeclinedRecording(text)) {
       await updateCall(this.options.pool, this.options.callDbId, {
@@ -101,16 +121,6 @@ export class CallSession {
         payload: { snippet: text.slice(0, 200) },
       });
     }
-
-    // Barge-in on caller speech only — ignore interim STT noise/echo.
-    if (this.speaking && isFinal) {
-      const words = text.trim().split(/\s+/).filter(Boolean);
-      if (words.length >= 2) {
-        this.bargeIn();
-      }
-    }
-
-    if (!isFinal) return;
 
     this.pendingFinalTranscript = text;
     if (!this.processing && !this.speaking) {
@@ -146,7 +156,7 @@ export class CallSession {
       return;
     }
 
-    const history = await this.loadHistory();
+    const history = await this.loadHistoryWithOpening();
     let userMessage = text;
     if (duration >= softCapMinutes(this.options.config)) {
       userMessage = `[Call nearing time limit.] ${text}`;
@@ -158,6 +168,7 @@ export class CallSession {
       userMessage,
       history,
       callerPhone: this.options.callerNumber,
+      callId: this.options.callDbId,
     });
 
     await updateCall(this.options.pool, this.options.callDbId, {
@@ -168,7 +179,21 @@ export class CallSession {
     const transferred = await this.handleToolSideEffects(result);
     if (transferred) return;
 
-    await this.speak(result.reply);
+    const reply = stripRepeatedCompliance(result.reply, this.options.config);
+    if (reply) {
+      await this.speak(reply);
+    }
+  }
+
+  /** Prepend the canned opening so Claude does not re-speak disclosure. */
+  private async loadHistoryWithOpening(): Promise<ClaudeMessage[]> {
+    const history = await this.loadHistory();
+    if (history.some((message) => message.role === 'assistant')) {
+      return history;
+    }
+    const opening = buildOpeningScript(this.options.config);
+    if (!opening) return history;
+    return [{ role: 'assistant', content: opening }, ...history];
   }
 
   private async loadHistory(): Promise<ClaudeMessage[]> {
@@ -228,11 +253,12 @@ export class CallSession {
   async speak(text: string): Promise<void> {
     if (!text.trim() || this.closed || this.transferred) return;
 
+    const spoken = prepareSpokenText(text);
     const generation = ++this.speechGeneration;
     this.speaking = true;
 
     try {
-      const audio = await this.options.elevenLabs.synthesize(text);
+      const audio = await this.options.elevenLabs.synthesize(spoken);
       if (generation !== this.speechGeneration || this.closed) return;
 
       const chunks = chunkAudio(audio, TELNYX_CHUNK_BYTES);

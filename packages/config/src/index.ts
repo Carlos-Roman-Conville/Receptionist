@@ -1,7 +1,7 @@
 export { getEnvPaths, resolveClientPaths, loadClientConfig, loadClientConfigFromEnv } from './load.js';
 export type { ClientConfig, LoadedMarkdown } from './load.js';
 export { assemblePrompt } from './prompt.js';
-export type { AssembledPrompt } from './prompt.js';
+export type { AssembledPrompt, PromptChannel } from './prompt.js';
 export { getActiveTools, INACTIVE_MODULE_TOOLS } from './tools.js';
 export { parseCalendarIntegration } from './integrations.js';
 export type { CalendarIntegration } from './integrations.js';

@@ -1,8 +1,10 @@
 import WebSocket from 'ws';
 
+export type DeepgramTranscriptKind = 'interim' | 'utterance';
+
 export interface DeepgramTranscript {
   text: string;
-  isFinal: boolean;
+  kind: DeepgramTranscriptKind;
 }
 
 export interface DeepgramLiveOptions {
@@ -20,12 +22,14 @@ export class DeepgramLiveClient {
   private readonly model: string;
   private readonly WebSocketImpl: typeof WebSocket;
   private socket: WebSocket | null = null;
+  /** Concatenated is_final segments until speech_final or UtteranceEnd. */
+  private accumulatedFinal = '';
 
   constructor(options: DeepgramLiveOptions) {
     this.apiKey = options.apiKey;
     this.onTranscript = options.onTranscript;
     this.onError = options.onError;
-    this.model = options.model ?? 'nova-2';
+    this.model = options.model ?? 'nova-2-phonecall';
     this.WebSocketImpl = options.WebSocketImpl ?? WebSocket;
   }
 
@@ -40,8 +44,12 @@ export class DeepgramLiveClient {
       sample_rate: '8000',
       channels: '1',
       interim_results: 'true',
-      endpointing: '400',
-      utterance_end_ms: '1200',
+      // Longer pauses while dictating phone numbers; default 400 ms cut callers off.
+      endpointing: '800',
+      utterance_end_ms: '2000',
+      smart_format: 'true',
+      numerals: 'true',
+      punctuate: 'true',
     });
 
     this.socket = new this.WebSocketImpl(
@@ -55,21 +63,7 @@ export class DeepgramLiveClient {
 
     this.socket.on('message', (data) => {
       try {
-        const parsed = JSON.parse(String(data)) as {
-          type?: string;
-          channel?: { alternatives?: Array<{ transcript?: string }> };
-          is_final?: boolean;
-          speech_final?: boolean;
-        };
-
-        if (parsed.type !== 'Results') return;
-        const text = parsed.channel?.alternatives?.[0]?.transcript?.trim() ?? '';
-        if (!text) return;
-
-        this.onTranscript({
-          text,
-          isFinal: Boolean(parsed.is_final || parsed.speech_final),
-        });
+        this.handleMessage(JSON.parse(String(data)) as DeepgramMessage);
       } catch (err) {
         this.onError?.(
           err instanceof Error ? err : new Error('Deepgram parse error'),
@@ -80,6 +74,42 @@ export class DeepgramLiveClient {
     this.socket.on('error', () => {
       this.onError?.(new Error('Deepgram websocket error'));
     });
+  }
+
+  /** Exposed for unit tests — simulates websocket payloads. */
+  handleMessage(parsed: DeepgramMessage): void {
+    if (parsed.type === 'UtteranceEnd') {
+      this.flushUtterance();
+      return;
+    }
+
+    if (parsed.type !== 'Results') return;
+
+    const text = parsed.channel?.alternatives?.[0]?.transcript?.trim() ?? '';
+    if (!parsed.is_final) {
+      if (text) {
+        this.onTranscript({ text, kind: 'interim' });
+      }
+      return;
+    }
+
+    if (text) {
+      this.accumulatedFinal = this.accumulatedFinal
+        ? `${this.accumulatedFinal} ${text}`
+        : text;
+    }
+
+    if (parsed.speech_final) {
+      this.flushUtterance();
+    }
+  }
+
+  private flushUtterance(): void {
+    const text = this.accumulatedFinal.trim();
+    this.accumulatedFinal = '';
+    if (text) {
+      this.onTranscript({ text, kind: 'utterance' });
+    }
   }
 
   sendAudio(audio: Buffer): void {
@@ -94,5 +124,13 @@ export class DeepgramLiveClient {
     }
     this.socket?.close();
     this.socket = null;
+    this.accumulatedFinal = '';
   }
+}
+
+interface DeepgramMessage {
+  type?: string;
+  channel?: { alternatives?: Array<{ transcript?: string }> };
+  is_final?: boolean;
+  speech_final?: boolean;
 }

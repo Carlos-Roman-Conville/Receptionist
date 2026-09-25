@@ -3,7 +3,7 @@ import {
   loadClientConfigFromEnv,
   parseCalendarIntegration,
 } from '@receptionist/config';
-import { bookAppointment, checkAvailability } from '../src/calendar/booking.js';
+import { bookAppointment, checkAvailability, validateBookingSlot } from '../src/calendar/booking.js';
 import { resetGoogleAccessTokenCache } from '../src/calendar/client.js';
 import type { ToolExecutionContext } from '../src/tools/types.js';
 
@@ -37,13 +37,14 @@ describe('calendar booking', () => {
     resetGoogleAccessTokenCache();
   });
 
-  it('falls back to queued booking when credentials are missing', async () => {
+  it('queues but does not confirm when credentials are missing', async () => {
     process.env.GOOGLE_CALENDAR_REFRESH_TOKEN = '';
     const result = await bookAppointment(ctx, {
       name: 'Alex',
-      start_time: '2026-08-08T10:00:00-04:00',
+      start_time: '2026-08-11T10:00:00-04:00',
     });
-    expect(result.message).toContain('queued');
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('NOT confirmed');
   });
 
   it('books consultation and buffer events via Google Calendar API', async () => {
@@ -67,13 +68,67 @@ describe('calendar booking', () => {
     const result = await bookAppointment(ctx, {
       name: 'Alex',
       email: 'alex@example.com',
-      start_time: '2026-08-15T10:00:00-04:00',
+      start_time: '2026-08-11T10:00:00-04:00',
     });
 
     expect(result.ok).toBe(true);
-    expect(result.message).toContain('Google Calendar');
+    expect(result.message).toContain('confirmation_time');
+    expect(result.data?.booked_start_local).toBe('Tuesday, August 11 at 10:00 AM');
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/events')).length).toBe(
       2,
+    );
+  });
+
+  it('rejects Sunday slots (03:33 call regression)', async () => {
+    const service = config.services.services?.find((s) => s.bookable_directly);
+    expect(service).toBeTruthy();
+    const result = validateBookingSlot(
+      config,
+      {
+        name: String(service!.name),
+        durationMinutes: Number(service!.duration_minutes),
+        bufferMinutes: Number(service!.buffer_minutes),
+      },
+      new Date('2026-08-09T17:00:00-04:00'),
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects weekday times after close', async () => {
+    const service = config.services.services?.find((s) => s.bookable_directly);
+    expect(service).toBeTruthy();
+    const result = validateBookingSlot(
+      config,
+      {
+        name: String(service!.name),
+        durationMinutes: Number(service!.duration_minutes),
+        bufferMinutes: Number(service!.buffer_minutes),
+      },
+      new Date('2026-08-10T17:00:00-04:00'),
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects book_appointment outside business hours before writing', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return {
+          ok: true,
+          json: async () => ({ access_token: 'access-token', expires_in: 3600 }),
+        };
+      }
+      return { ok: false, json: async () => ({}) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await bookAppointment(ctx, {
+      name: 'Carlos',
+      start_time: '2026-08-09T17:00:00-04:00',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/events'))).toBe(
+      false,
     );
   });
 
@@ -102,5 +157,38 @@ describe('calendar booking', () => {
     const result = await checkAvailability(ctx, {});
     expect(result.ok).toBe(true);
     expect(Array.isArray(result.data?.slots)).toBe(true);
+  });
+
+  it('honors preferred weekday instead of only the earliest Monday slots', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return {
+          ok: true,
+          json: async () => ({ access_token: 'access-token', expires_in: 3600 }),
+        };
+      }
+      if (url.includes('/freeBusy')) {
+        return {
+          ok: true,
+          json: async () => ({
+            calendars: {
+              [calendarId]: { busy: [] },
+            },
+          }),
+        };
+      }
+      return { ok: false, json: async () => ({}) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await checkAvailability(ctx, {
+      preferred_dates: ['Tuesday', 'morning'],
+    });
+
+    expect(result.ok).toBe(true);
+    const labels = result.data?.slots_local as string[] | undefined;
+    expect(labels?.length).toBeGreaterThan(0);
+    expect(labels?.every((label) => label.startsWith('Tuesday'))).toBe(true);
+    expect(result.data?.matched_preference).toBe(true);
   });
 });

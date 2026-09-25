@@ -21,6 +21,35 @@ export function buildOpeningScript(config: ClientConfig): string {
     .join(' ');
 }
 
+/** Remove compliance lines Claude sometimes re-speaks after the canned opening. */
+export function stripRepeatedCompliance(text: string, config: ClientConfig): string {
+  const disclosure = config.compliance.disclosure as Record<string, unknown> | undefined;
+  const recording = config.compliance.recording as Record<string, unknown> | undefined;
+  const phrases = [
+    String(disclosure?.inbound_disclosure_script ?? '').trim(),
+    String(recording?.notification_script ?? '').trim(),
+  ].filter(Boolean);
+
+  let out = text.trim();
+  for (const phrase of phrases) {
+    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(escaped, 'gi'), ' ');
+  }
+
+  // Catch common rewrites of the same compliance openers.
+  out = out.replace(
+    /(?:good\s+(?:morning|afternoon|evening)[,.]?\s*)?(?:thanks|thank you) for calling[^.?!]*[.?!]\s*/gi,
+    ' ',
+  );
+  out = out.replace(
+    /this is an automated assistant(?:,?\s*and)?(?:\s*this call is recorded[^.?!]*)?[.?!]?\s*/gi,
+    ' ',
+  );
+  out = out.replace(/this call is recorded[^.?!]*[.?!]?\s*/gi, ' ');
+
+  return out.replace(/\s{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
+}
+
 export function hardCapScript(config: ClientConfig): string {
   const escalation = config.compliance.escalation as Record<string, unknown> | undefined;
   return String(

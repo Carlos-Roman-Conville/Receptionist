@@ -41,6 +41,7 @@ export interface BrainRequest {
   history?: ClaudeMessage[];
   visitorEmail?: string | null;
   callerPhone?: string | null;
+  callId?: string | null;
 }
 
 export interface BrainResponse {
@@ -89,7 +90,9 @@ export class Brain {
       classifierConfig,
     );
 
-    const { systemPrompt } = assemblePrompt(this.config);
+    const { systemPrompt } = assemblePrompt(this.config, {
+      channel: request.channel,
+    });
     const system = [
       systemPrompt,
       '',
@@ -100,7 +103,9 @@ export class Brain {
         callerPhone: request.callerPhone,
       }),
       '',
-      buildChannelOverlay(request.channel, this.config),
+      buildChannelOverlay(request.channel, this.config, {
+        callerPhone: request.callerPhone,
+      }),
     ].join('\n');
 
     const activeTools = getActiveTools(this.config);
@@ -123,6 +128,7 @@ export class Brain {
         config: this.config,
         clientSlug: this.config.paths.clientSlug,
         sessionId: session.id,
+        callId: request.callId,
         channel: request.channel,
         lastUserMessage: request.userMessage,
       },

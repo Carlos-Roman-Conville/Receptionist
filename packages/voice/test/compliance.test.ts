@@ -5,6 +5,7 @@ import {
   hardCapMinutes,
   openingQuestion,
   softCapMinutes,
+  stripRepeatedCompliance,
 } from '../src/compliance.js';
 
 describe('phone compliance scripts', () => {
@@ -21,6 +22,16 @@ describe('phone compliance scripts', () => {
     const opening = buildOpeningScript(config);
     expect(opening.trim().endsWith('?')).toBe(true);
     expect(opening).toContain(openingQuestion(config));
+  });
+
+  it('strips repeated disclosure from model replies', () => {
+    const cleaned = stripRepeatedCompliance(
+      'Good morning. Thanks for calling CRC Solutions. This is an automated assistant, and this call is recorded for quality assurance.\n\nI\'d be happy to help you book a consultation. What\'s your name?',
+      config,
+    );
+    expect(cleaned.toLowerCase()).not.toContain('automated assistant');
+    expect(cleaned.toLowerCase()).not.toContain('recorded');
+    expect(cleaned.toLowerCase()).toContain("what's your name");
   });
 
   it('reads soft and hard caps from compliance config', () => {

@@ -5,17 +5,28 @@ export type BrainChannel = 'phone' | 'web_chat';
 export function buildChannelOverlay(
   channel: BrainChannel,
   config: ClientConfig,
+  options?: { callerPhone?: string | null },
 ): string {
   if (channel === 'phone') {
+    const callerPhone = String(options?.callerPhone ?? '').trim();
     return [
       'Channel: PHONE.',
-      'Respond in natural spoken prose suitable for text-to-speech.',
-      'Keep sentences short. No markdown, bullets, or JSON.',
-      'Drive the call. End every turn with a specific question or a concrete next step so the caller is never left guessing.',
-      'If the caller is vague about why they called, name the one or two things you can do for them instead of asking an open-ended question again.',
-      'Ask for one piece of information at a time. Never read back a list of fields you need.',
-      'When you already have what a tool needs, call it instead of asking the caller to confirm details they just gave.',
-    ].join('\n');
+      'These PHONE rules override the Identity disclosure timing above.',
+      'The disclosure and recording notice were already spoken before this turn. Never repeat them. Never say you are an automated assistant again unless the caller asks.',
+      'Be extremely brief. One or two short sentences max. Aim under 20 spoken words unless reading back times or a phone number.',
+      'No markdown, bullets, JSON, or brochure language.',
+      'If they want to book, do not pitch the consultation. Ask only the next missing fact. Good example: "Sure. What day works for you?"',
+      'Booking order: day or time window first, then offer 2-3 real slots from the tool, then name, then confirm callback number.',
+      'When checking availability, pass preferred_dates that match what they asked for. If none match, say so and offer the next real alternatives. Never invent calendar limits.',
+      'Never claim a booking is confirmed unless book_appointment returned ok: true.',
+      'When book_appointment succeeds, read confirmation_time or booked_start_local from the tool result verbatim. Never state a different day or time from memory.',
+      callerPhone
+        ? `Caller ID is ${callerPhone}. Prefer: "Is the best number the one you're calling from?" instead of asking them to dictate digits.`
+        : 'If you need a callback number, ask once and confirm.',
+      'Read the caller\'s callback number back digit-by-digit (say "oh" for 0). The never-say rule about a personal cell applies only to the owner\'s private number.',
+    ]
+      .filter(Boolean)
+      .join('\n');
   }
 
   const webSettings = (config.moduleConfig.settings as { web_chat?: Record<string, unknown> })

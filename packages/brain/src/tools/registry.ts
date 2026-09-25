@@ -39,6 +39,8 @@ const TOOL_SCHEMAS: Record<
       preferred_dates: {
         type: 'array',
         items: { type: 'string' },
+        description:
+          'Caller preferences such as weekday names (Tuesday), ISO dates (2026-08-11), today/tomorrow, and morning/afternoon. Always pass what the caller asked for.',
       },
     },
   },
@@ -48,7 +50,10 @@ const TOOL_SCHEMAS: Record<
       name: { type: 'string' },
       email: { type: 'string' },
       phone: { type: 'string' },
-      start_time: { type: 'string', description: 'ISO-8601 datetime' },
+      start_time: {
+        type: 'string',
+        description: 'ISO-8601 datetime from check_availability slots only',
+      },
       service_name: { type: 'string' },
     },
     required: ['name', 'start_time'],

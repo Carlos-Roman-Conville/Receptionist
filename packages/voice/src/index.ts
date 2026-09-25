@@ -1,6 +1,12 @@
 export { loadVoiceEnv, mediaStreamUrl, resolveEnvReference, resolveEmergencyTransferNumber, callerDeclinedRecording } from './env.js';
 export type { VoiceEnvConfig } from './env.js';
-export { buildOpeningScript, hardCapScript, softCapMinutes, hardCapMinutes } from './compliance.js';
+export {
+  buildOpeningScript,
+  hardCapScript,
+  softCapMinutes,
+  hardCapMinutes,
+  stripRepeatedCompliance,
+} from './compliance.js';
 export { createVoiceServer } from './server.js';
 export type { CreateVoiceServerOptions, VoiceServer } from './server.js';
 export { CallSession } from './session/call-session.js';

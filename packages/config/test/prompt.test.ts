@@ -62,6 +62,13 @@ describe('assemblePrompt', () => {
     expect(names).toContain('check_availability');
   });
 
+  it('omits spoken compliance lines from the phone channel prompt', () => {
+    const phonePrompt = assemblePrompt(config, { channel: 'phone' }).systemPrompt;
+    expect(phonePrompt).not.toContain('Disclosure timing:');
+    expect(phonePrompt).not.toContain('Inbound disclosure (first line):');
+    expect(phonePrompt).not.toContain('Recording notice:');
+  });
+
   it('omits tools for modules set to false', () => {
     const names = tools.map((t) => t.name);
     expect(config.moduleConfig.modules.email_handling).toBe(false);
